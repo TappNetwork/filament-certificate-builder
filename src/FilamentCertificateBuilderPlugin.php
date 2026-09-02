@@ -1,26 +1,29 @@
 <?php
 
-namespace VendorName\Skeleton;
+declare(strict_types=1);
+
+namespace Tapp\FilamentCertificateBuilder;
 
 use Filament\Contracts\Plugin;
 use Filament\Panel;
 
-class SkeletonPlugin implements Plugin
+class FilamentCertificateBuilderPlugin implements Plugin
 {
     public function getId(): string
     {
-        return 'skeleton';
+        return 'filament-certificate-builder';
     }
 
     public function register(Panel $panel): void
     {
-        //
+        $resources = config('certificate-builder.resources', []);
+
+        if (is_array($resources) && $resources !== []) {
+            $panel->resources($resources);
+        }
     }
 
-    public function boot(Panel $panel): void
-    {
-        //
-    }
+    public function boot(Panel $panel): void {}
 
     public static function make(): static
     {

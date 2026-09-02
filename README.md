@@ -1,70 +1,79 @@
-# :package_description
+# Filament Certificate Builder
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/:vendor_slug/:package_slug/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/:vendor_slug/:package_slug/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/:vendor_slug/:package_slug/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/:vendor_slug/:package_slug/actions?query=workflow%3A"Fix+PHP+code+styling"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/tapp/filament-certificate-builder.svg?style=flat-square)](https://packagist.org/packages/tapp/filament-certificate-builder)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/TappNetwork/filament-certificate-builder/run-tests.yml?branch=5.x&label=tests&style=flat-square)](https://github.com/TappNetwork/filament-certificate-builder/actions?query=workflow%3Arun-tests+branch%3A5.x)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/TappNetwork/filament-certificate-builder/fix-php-code-style-issues.yml?branch=5.x&label=code%20style&style=flat-square)](https://github.com/TappNetwork/filament-certificate-builder/actions?query=workflow%3A"Fix+PHP+code+styling"+branch%3A5.x)
+[![Total Downloads](https://img.shields.io/packagist/dt/tapp/filament-certificate-builder.svg?style=flat-square)](https://packagist.org/packages/tapp/filament-certificate-builder)
 
-<!--delete-->
----
-This repo can be used to scaffold a Filament plugin. Follow these steps to get started:
-
-1. Press the "Use this template" button at the top of this repo to create a new repo with the contents of this skeleton.
-2. Run "php ./configure.php" to run a script that will replace all placeholders throughout all the files.
-3. Make something great!
----
-<!--/delete-->
-
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
+A Filament plugin for designing certificate templates and rendering them as HTML or PDF. Host apps register token sets and a resolver; the package never imports your domain models.
 
 ## Installation
 
-You can install the package via composer:
-
 ```bash
-composer require :vendor_slug/:package_slug
+composer require tapp/filament-certificate-builder
 ```
 
-> [!IMPORTANT]
-> If you have not set up a custom theme and are using Filament Panels follow the instructions in the [Filament Docs](https://filamentphp.com/docs/4.x/styling/overview#creating-a-custom-theme) first.
+Register the plugin on your Filament panel:
 
-After setting up a custom theme add the plugin's views to your theme css file or your app's css file if using the standalone packages.
+```php
+use Tapp\FilamentCertificateBuilder\FilamentCertificateBuilderPlugin;
+
+$panel->plugin(FilamentCertificateBuilderPlugin::make());
+```
+
+If you have not set up a custom theme, follow the [Filament theme docs](https://filamentphp.com/docs/4.x/styling/overview#creating-a-custom-theme) first, then add:
 
 ```css
-@source '../../../../vendor/:vendor_slug/:package_slug/resources/**/*.blade.php';
+@source '../../../../vendor/tapp/filament-certificate-builder/resources/**/*.blade.php';
 ```
 
-You can publish and run the migrations with:
+Publish and run the migrations:
 
 ```bash
-php artisan vendor:publish --tag=":package_slug-migrations"
+php artisan vendor:publish --tag="filament-certificate-builder-migrations"
 php artisan migrate
 ```
 
-You can publish the config file with:
+Optionally publish the config:
 
 ```bash
-php artisan vendor:publish --tag=":package_slug-config"
+php artisan vendor:publish --tag="filament-certificate-builder-config"
 ```
 
-Optionally, you can publish the views using
+## Token sets
 
-```bash
-php artisan vendor:publish --tag=":package_slug-views"
-```
-
-This is the contents of the published config file:
+Each issuing model (training, course, etc.) gets its own token set in `config/certificate-builder.php`. The set lists live field keys, sample values for the designer, default static copy, and a resolver class that implements `ResolvesCertificateTokens`.
 
 ```php
-return [
-];
+'token_sets' => [
+    'training' => [
+        'label' => 'Training',
+        'resolver' => App\Certificates\TrainingCertificateTokenResolver::class,
+        'tokens' => [
+            'recipient_name' => ['label' => 'Recipient name', 'sample' => 'Jane Doe'],
+            'course_name' => ['label' => 'Course name', 'sample' => 'Community Health Worker'],
+            'date_range' => ['label' => 'Date range', 'sample' => 'January 15th - March 15th 2026'],
+        ],
+        'default_copy' => [
+            'certifying_line' => 'This certifies that',
+            'completed_line' => 'has successfully completed',
+            'description' => '',
+        ],
+    ],
+],
 ```
 
-## Usage
+Render a certificate with a template and resolved tokens:
 
 ```php
-$variable = new VendorName\Skeleton();
-echo $variable->echoPhrase('Hello, VendorName!');
+use Tapp\FilamentCertificateBuilder\Actions\GenerateCertificatePdfAction;
+
+$html = view('filament-certificate-builder::certificate', [
+    'template' => $template,
+    'tokens' => $tokens,
+])->render();
+
+$pdf = app(GenerateCertificatePdfAction::class)->handle($template, $tokens);
 ```
 
 ## Testing
@@ -87,7 +96,7 @@ Please review [our security policy](.github/SECURITY.md) on how to report securi
 
 ## Credits
 
-- [:author_name](https://github.com/:author_username)
+- [John Wesely](https://github.com/johnwesely)
 - [All Contributors](../../contributors)
 
 ## License

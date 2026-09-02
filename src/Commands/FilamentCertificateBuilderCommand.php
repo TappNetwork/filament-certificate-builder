@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace Tapp\FilamentCertificateBuilder\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class FilamentCertificateBuilderCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'filament-certificate-builder';
 
     public $description = 'My command';
 
