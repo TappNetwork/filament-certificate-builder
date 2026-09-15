@@ -141,6 +141,7 @@ class CertificateLayout
             return false;
         }
 
+        // Images and signatures keep their box even when empty; only blank text is omitted.
         if (($element['type'] ?? 'text') !== 'text') {
             return true;
         }
