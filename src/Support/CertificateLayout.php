@@ -130,6 +130,25 @@ class CertificateLayout
     }
 
     /**
+     * Hidden elements and text boxes whose resolved copy is empty are not drawn.
+     *
+     * @param  array<string, mixed>  $element
+     * @param  array<string, string>  $tokens
+     */
+    public static function shouldRenderElement(array $element, array $tokens, ?string $tokenSet = null): bool
+    {
+        if (! ($element['visible'] ?? true)) {
+            return false;
+        }
+
+        if (($element['type'] ?? 'text') !== 'text') {
+            return true;
+        }
+
+        return trim(self::resolveElementText($element, $tokens, $tokenSet)) !== '';
+    }
+
+    /**
      * @param  array{width?: int, height?: int, signature_count?: int, elements?: list<array<string, mixed>>}  $layout
      * @return array{width: int, height: int, signature_count: int, elements: list<array<string, mixed>>}
      */

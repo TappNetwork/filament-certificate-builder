@@ -69,3 +69,29 @@ it('generates a pdf via the configured browsershot instance', function () {
 
     expect($action->handle($template, $tokens))->toBe('%PDF-1.4 fake');
 });
+
+it('omits empty date range text from the certificate html', function () {
+    $template = CertificateTemplate::defaultTemplate();
+    $tokens = [
+        'recipient_name' => 'Jane Doe',
+        'course_name' => 'Safety Training',
+        'date_range' => '',
+    ];
+
+    $action = Mockery::mock(GenerateCertificatePdfAction::class)
+        ->makePartial()
+        ->shouldAllowMockingProtectedMethods();
+
+    $browsershot = Mockery::mock(Browsershot::class);
+    $browsershot->shouldReceive('pdf')->once()->andReturn('%PDF-1.4 fake');
+
+    $action->shouldReceive('browsershotForHtml')
+        ->once()
+        ->withArgs(fn (string $html): bool => str_contains($html, 'Jane Doe')
+            && str_contains($html, 'Safety Training')
+            && ! str_contains($html, 'January')
+            && ! str_contains($html, ' - '))
+        ->andReturn($browsershot);
+
+    expect($action->handle($template, $tokens))->toBe('%PDF-1.4 fake');
+});

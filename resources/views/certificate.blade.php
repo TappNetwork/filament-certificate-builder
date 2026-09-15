@@ -40,7 +40,7 @@
     <div class="certificate-canvas">
         <div class="certificate-inner">
             @foreach ($layout['elements'] as $element)
-                @continue(! ($element['visible'] ?? true))
+                @continue(! CertificateLayout::shouldRenderElement($element, $tokens, $tokenSet))
 
                 @php
                     $type = $element['type'] ?? 'text';

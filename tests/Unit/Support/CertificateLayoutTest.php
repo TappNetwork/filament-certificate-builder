@@ -24,6 +24,39 @@ it('treats a config token as live only on the set that declares it', function ()
         ->and(CertificateLayout::tokenLabel('hours', 'default'))->toBe('Contact hours');
 });
 
+it('does not render hidden elements or empty text boxes', function () {
+    $tokens = [
+        'recipient_name' => 'Jane Doe',
+        'course_name' => 'CHW',
+        'date_range' => '',
+    ];
+
+    expect(CertificateLayout::shouldRenderElement([
+        'type' => 'text',
+        'bind' => 'recipient_name',
+        'visible' => true,
+    ], $tokens, 'default'))->toBeTrue()
+        ->and(CertificateLayout::shouldRenderElement([
+            'type' => 'text',
+            'bind' => 'date_range',
+            'visible' => true,
+        ], $tokens, 'default'))->toBeFalse()
+        ->and(CertificateLayout::shouldRenderElement([
+            'type' => 'text',
+            'text' => '   ',
+            'visible' => true,
+        ], $tokens, 'default'))->toBeFalse()
+        ->and(CertificateLayout::shouldRenderElement([
+            'type' => 'text',
+            'bind' => 'recipient_name',
+            'visible' => false,
+        ], $tokens, 'default'))->toBeFalse()
+        ->and(CertificateLayout::shouldRenderElement([
+            'type' => 'image',
+            'visible' => true,
+        ], $tokens, 'default'))->toBeTrue();
+});
+
 it('resolves live binds from tokens and static text from the element', function () {
     $tokens = [
         'recipient_name' => 'Jane Doe',
