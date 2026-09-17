@@ -19,6 +19,12 @@ class CertificateLayoutDesigner extends Component
 
     public int $signatureCount = CertificateLayout::DEFAULT_SIGNATURE_COUNT;
 
+    /** @var array{style: string, color: string, width: int, inner_color: string, inner_width: int, inner_inset: int, gradient: string} */
+    public array $border = [];
+
+    /** @var array{enabled: bool, height: int, background_color: string, background_size: string, background_position: string, title_bind: string, title: string, title_color: string, title_size: int, title_transform: string, subtitle: string, subtitle_color: string, subtitle_size: int} */
+    public array $header = [];
+
     public ?string $selectedId = null;
 
     public function mount(CertificateTemplate $template): void
@@ -28,6 +34,8 @@ class CertificateLayoutDesigner extends Component
         $layout = $template->resolvedLayout();
         $this->elements = $layout['elements'];
         $this->signatureCount = $layout['signature_count'];
+        $this->border = $layout['border'];
+        $this->header = $layout['header'];
     }
 
     public function selectElement(?string $id): void
@@ -115,6 +123,8 @@ class CertificateLayoutDesigner extends Component
                 'width' => CertificateLayout::WIDTH,
                 'height' => CertificateLayout::HEIGHT,
                 'signature_count' => $this->signatureCount,
+                'border' => CertificateLayout::normalizeBorder($this->border),
+                'header' => CertificateLayout::normalizeHeader($this->header, $this->template->tokenSet()),
                 'elements' => $this->elements,
             ],
         ]);
@@ -152,6 +162,8 @@ class CertificateLayoutDesigner extends Component
         $layout = CertificateLayout::default($this->template->tokenSet());
         $this->elements = $layout['elements'];
         $this->signatureCount = $layout['signature_count'];
+        $this->border = $layout['border'];
+        $this->header = $layout['header'];
         $this->selectedId = null;
 
         Notification::make()
@@ -223,6 +235,10 @@ class CertificateLayoutDesigner extends Component
             'canvasWidth' => CertificateLayout::WIDTH,
             'canvasHeight' => CertificateLayout::HEIGHT,
             'maxSignatureCount' => CertificateLayout::MAX_SIGNATURES,
+            'borderStyles' => CertificateLayout::borderStyles($this->border),
+            'headerStyles' => CertificateLayout::headerStyles($this->header, $this->template->tokenSet()),
+            'headerTitle' => CertificateLayout::resolveHeaderTitle($this->header, $this->sampleTokens(), $this->template->tokenSet()),
+            'headerImageUrl' => $this->template->assetUrl('header'),
         ]);
     }
 }

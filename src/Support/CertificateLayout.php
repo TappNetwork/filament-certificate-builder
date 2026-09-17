@@ -26,6 +26,18 @@ class CertificateLayout
 
     public const DEFAULT_SIGNATURE_COUNT = 2;
 
+    public const BORDER_STYLES = ['none', 'solid', 'double', 'gradient'];
+
+    public const DEFAULT_BORDER_COLOR = '#a1a1aa';
+
+    public const DEFAULT_INNER_BORDER_COLOR = '#d4d4d8';
+
+    public const DEFAULT_BORDER_WIDTH = 8;
+
+    public const DEFAULT_INNER_BORDER_WIDTH = 4;
+
+    public const DEFAULT_INNER_INSET = 10;
+
     public static function defaultTokenSet(): string
     {
         return (string) config('certificate-builder.default_token_set', 'default');
@@ -108,7 +120,7 @@ class CertificateLayout
     /**
      * Default certificate layout matching the legacy Blade certificate.
      *
-     * @return array{width: int, height: int, signature_count: int, elements: list<array<string, mixed>>}
+     * @return array{width: int, height: int, signature_count: int, border: array{style: string, color: string, width: int, inner_color: string, inner_width: int, inner_inset: int, gradient: string}, header: array{enabled: bool, height: int, background_color: string, background_size: string, background_position: string, title_bind: string, title: string, title_color: string, title_size: int, title_transform: string, subtitle: string, subtitle_color: string, subtitle_size: int}, elements: list<array<string, mixed>>}
      */
     public static function default(?string $tokenSet = null): array
     {
@@ -116,8 +128,187 @@ class CertificateLayout
             'width' => self::WIDTH,
             'height' => self::HEIGHT,
             'signature_count' => self::DEFAULT_SIGNATURE_COUNT,
+            'border' => self::defaultBorder(),
+            'header' => self::defaultHeader(),
             'elements' => self::defaultElements($tokenSet),
         ];
+    }
+
+    /**
+     * @return array{style: string, color: string, width: int, inner_color: string, inner_width: int, inner_inset: int, gradient: string}
+     */
+    public static function defaultBorder(): array
+    {
+        return [
+            'style' => 'double',
+            'color' => self::DEFAULT_BORDER_COLOR,
+            'width' => self::DEFAULT_BORDER_WIDTH,
+            'inner_color' => self::DEFAULT_INNER_BORDER_COLOR,
+            'inner_width' => self::DEFAULT_INNER_BORDER_WIDTH,
+            'inner_inset' => self::DEFAULT_INNER_INSET,
+            'gradient' => '',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $border
+     * @return array{style: string, color: string, width: int, inner_color: string, inner_width: int, inner_inset: int, gradient: string}
+     */
+    public static function normalizeBorder(array $border): array
+    {
+        $default = self::defaultBorder();
+        $style = isset($border['style']) && is_string($border['style']) ? $border['style'] : $default['style'];
+
+        if (! in_array($style, self::BORDER_STYLES, true)) {
+            $style = $default['style'];
+        }
+
+        return [
+            'style' => $style,
+            'color' => self::sanitizeHexColor($border['color'] ?? null, $default['color']),
+            'width' => max(0, min(40, (int) ($border['width'] ?? $default['width']))),
+            'inner_color' => self::sanitizeHexColor($border['inner_color'] ?? null, $default['inner_color']),
+            'inner_width' => max(0, min(20, (int) ($border['inner_width'] ?? $default['inner_width']))),
+            'inner_inset' => max(0, min(40, (int) ($border['inner_inset'] ?? $default['inner_inset']))),
+            'gradient' => self::sanitizeGradient(
+                isset($border['gradient']) && is_string($border['gradient']) ? $border['gradient'] : ''
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $border
+     * @return array{canvas: string, inner: string}
+     */
+    public static function borderStyles(array $border): array
+    {
+        $border = self::normalizeBorder($border);
+
+        return match ($border['style']) {
+            'none' => [
+                'canvas' => 'border:none;',
+                'inner' => 'inset:0;border:none;',
+            ],
+            'solid' => [
+                'canvas' => 'border:' . $border['width'] . 'px solid ' . $border['color'] . ';',
+                'inner' => 'inset:0;border:none;',
+            ],
+            'gradient' => [
+                'canvas' => 'border:none;background:' . ($border['gradient'] !== '' ? $border['gradient'] : $border['color']) . ';',
+                'inner' => 'inset:' . $border['width'] . 'px;border:none;background:#fff;',
+            ],
+            default => [
+                'canvas' => 'border:' . $border['width'] . 'px solid ' . $border['color'] . ';',
+                'inner' => 'inset:' . $border['inner_inset'] . 'px;border:' . $border['inner_width'] . 'px solid ' . $border['inner_color'] . ';',
+            ],
+        };
+    }
+
+    /**
+     * @return array{enabled: bool, height: int, background_color: string, background_size: string, background_position: string, title_bind: string, title: string, title_color: string, title_size: int, title_transform: string, subtitle: string, subtitle_color: string, subtitle_size: int}
+     */
+    public static function defaultHeader(): array
+    {
+        return [
+            'enabled' => false,
+            'height' => 220,
+            'background_color' => '',
+            'background_size' => 'cover',
+            'background_position' => 'center',
+            'title_bind' => '',
+            'title' => '',
+            'title_color' => '#ffffff',
+            'title_size' => 36,
+            'title_transform' => 'none',
+            'subtitle' => '',
+            'subtitle_color' => '#111827',
+            'subtitle_size' => 28,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $header
+     * @return array{enabled: bool, height: int, background_color: string, background_size: string, background_position: string, title_bind: string, title: string, title_color: string, title_size: int, title_transform: string, subtitle: string, subtitle_color: string, subtitle_size: int}
+     */
+    public static function normalizeHeader(array $header, ?string $tokenSet = null): array
+    {
+        $default = self::defaultHeader();
+        $titleBind = isset($header['title_bind']) && is_string($header['title_bind'])
+            ? $header['title_bind']
+            : $default['title_bind'];
+        $transform = isset($header['title_transform']) && is_string($header['title_transform'])
+            ? $header['title_transform']
+            : $default['title_transform'];
+
+        if (! in_array($transform, ['none', 'uppercase'], true)) {
+            $transform = $default['title_transform'];
+        }
+
+        return [
+            'enabled' => filter_var($header['enabled'] ?? $default['enabled'], FILTER_VALIDATE_BOOLEAN),
+            'height' => max(40, min(400, (int) ($header['height'] ?? $default['height']))),
+            'background_color' => self::sanitizeOptionalHexColor($header['background_color'] ?? null),
+            'background_size' => self::sanitizeBackgroundSize(
+                isset($header['background_size']) && is_string($header['background_size'])
+                    ? $header['background_size']
+                    : $default['background_size']
+            ),
+            'background_position' => self::sanitizeBackgroundPosition(
+                isset($header['background_position']) && is_string($header['background_position'])
+                    ? $header['background_position']
+                    : $default['background_position']
+            ),
+            'title_bind' => self::isLiveBind($titleBind, $tokenSet) ? $titleBind : '',
+            'title' => isset($header['title']) && is_string($header['title']) ? $header['title'] : $default['title'],
+            'title_color' => self::sanitizeHexColor($header['title_color'] ?? null, $default['title_color']),
+            'title_size' => max(12, min(72, (int) ($header['title_size'] ?? $default['title_size']))),
+            'title_transform' => $transform,
+            'subtitle' => isset($header['subtitle']) && is_string($header['subtitle']) ? $header['subtitle'] : $default['subtitle'],
+            'subtitle_color' => self::sanitizeHexColor($header['subtitle_color'] ?? null, $default['subtitle_color']),
+            'subtitle_size' => max(12, min(72, (int) ($header['subtitle_size'] ?? $default['subtitle_size']))),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $header
+     */
+    public static function headerStyles(array $header, ?string $tokenSet = null): string
+    {
+        $header = self::normalizeHeader($header, $tokenSet);
+
+        if (! $header['enabled']) {
+            return 'display:none;';
+        }
+
+        $styles = 'display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;width:100%;height:'
+            . $header['height']
+            . 'px;padding:24px 32px;text-align:center;background-repeat:no-repeat;background-size:'
+            . $header['background_size']
+            . ';background-position:'
+            . $header['background_position']
+            . ';';
+
+        if ($header['background_color'] !== '') {
+            $styles .= 'background-color:' . $header['background_color'] . ';';
+        }
+
+        return $styles;
+    }
+
+    /**
+     * @param  array<string, mixed>  $header
+     * @param  array<string, string>  $tokens
+     */
+    public static function resolveHeaderTitle(array $header, array $tokens, ?string $tokenSet = null): string
+    {
+        $header = self::normalizeHeader($header, $tokenSet);
+        $bind = $header['title_bind'];
+
+        if ($bind !== '' && self::isLiveBind($bind, $tokenSet)) {
+            return (string) ($tokens[$bind] ?? '');
+        }
+
+        return $header['title'];
     }
 
     /**
@@ -138,8 +329,8 @@ class CertificateLayout
     }
 
     /**
-     * @param  array{width?: int, height?: int, signature_count?: int, elements?: list<array<string, mixed>>}  $layout
-     * @return array{width: int, height: int, signature_count: int, elements: list<array<string, mixed>>}
+     * @param  array{width?: int, height?: int, signature_count?: int, border?: array<string, mixed>, header?: array<string, mixed>, elements?: list<array<string, mixed>>}  $layout
+     * @return array{width: int, height: int, signature_count: int, border: array{style: string, color: string, width: int, inner_color: string, inner_width: int, inner_inset: int, gradient: string}, header: array{enabled: bool, height: int, background_color: string, background_size: string, background_position: string, title_bind: string, title: string, title_color: string, title_size: int, title_transform: string, subtitle: string, subtitle_color: string, subtitle_size: int}, elements: list<array<string, mixed>>}
      */
     public static function normalize(array $layout, ?string $tokenSet = null): array
     {
@@ -168,6 +359,8 @@ class CertificateLayout
             'width' => $width,
             'height' => $height,
             'signature_count' => $signatureCount,
+            'border' => self::normalizeBorder(is_array($layout['border'] ?? null) ? $layout['border'] : []),
+            'header' => self::normalizeHeader(is_array($layout['header'] ?? null) ? $layout['header'] : [], $tokenSet),
             'elements' => $elements,
         ];
     }
@@ -611,5 +804,70 @@ class CertificateLayout
         }
 
         return $normalized;
+    }
+
+    private static function sanitizeHexColor(mixed $color, string $fallback): string
+    {
+        if (! is_string($color)) {
+            return $fallback;
+        }
+
+        $color = trim($color);
+
+        if (preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $color) === 1) {
+            return $color;
+        }
+
+        return $fallback;
+    }
+
+    private static function sanitizeOptionalHexColor(mixed $color): string
+    {
+        if (! is_string($color) || trim($color) === '') {
+            return '';
+        }
+
+        return self::sanitizeHexColor($color, '');
+    }
+
+    private static function sanitizeBackgroundSize(string $size): string
+    {
+        $size = trim($size);
+
+        if (in_array($size, ['cover', 'contain', 'auto'], true)) {
+            return $size;
+        }
+
+        if (preg_match('/^\d{1,3}%(?:\s+(?:auto|\d{1,3}%))?$/', $size) === 1) {
+            return $size;
+        }
+
+        return 'cover';
+    }
+
+    private static function sanitizeBackgroundPosition(string $position): string
+    {
+        $position = trim($position);
+
+        if (preg_match('/^(?:center|top|bottom|left|right)(?:\s+(?:center|top|bottom|left|right))?$/', $position) === 1) {
+            return $position;
+        }
+
+        return 'center';
+    }
+
+    private static function sanitizeGradient(string $gradient): string
+    {
+        $gradient = trim($gradient);
+
+        if ($gradient === '') {
+            return '';
+        }
+
+        if (preg_match('/^linear-gradient\((?:to (?:right|left|top|bottom)|[0-9]{1,3}deg),\s*(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})(?:,\s*)?){2,4}\)$/', $gradient) === 1) {
+            return $gradient;
+        }
+
+        return '';
     }
 }

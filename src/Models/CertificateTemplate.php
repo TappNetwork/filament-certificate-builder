@@ -39,6 +39,7 @@ class CertificateTemplate extends Model implements HasMedia
         $this->addMediaCollection('logo_1')->singleFile();
         $this->addMediaCollection('logo_2')->singleFile();
         $this->addMediaCollection('logo_3')->singleFile();
+        $this->addMediaCollection('header')->singleFile();
         $this->addMediaCollection('signature_1')->singleFile();
         $this->addMediaCollection('signature_2')->singleFile();
         $this->addMediaCollection('signature_3')->singleFile();
@@ -52,7 +53,7 @@ class CertificateTemplate extends Model implements HasMedia
     }
 
     /**
-     * @return array{width: int, height: int, signature_count: int, elements: list<array<string, mixed>>}
+     * @return array{width: int, height: int, signature_count: int, border: array{style: string, color: string, width: int, inner_color: string, inner_width: int, inner_inset: int, gradient: string}, header: array{enabled: bool, height: int, background_color: string, background_size: string, background_position: string, title_bind: string, title: string, title_color: string, title_size: int, title_transform: string, subtitle: string, subtitle_color: string, subtitle_size: int}, elements: list<array<string, mixed>>}
      */
     public function resolvedLayout(): array
     {
@@ -79,7 +80,7 @@ class CertificateTemplate extends Model implements HasMedia
         $media = $this->getFirstMedia($source);
 
         if ($media !== null) {
-            return $media->getUrl();
+            return self::localizePublicUrl($media->getUrl());
         }
 
         $legacySources = match ($source) {
@@ -95,14 +96,46 @@ class CertificateTemplate extends Model implements HasMedia
             $legacyMedia = $this->getFirstMedia($legacySource);
 
             if ($legacyMedia !== null) {
-                return $legacyMedia->getUrl();
+                return self::localizePublicUrl($legacyMedia->getUrl());
             }
         }
 
         $fallbacks = config('certificate-builder.fallback_assets', []);
         $path = is_array($fallbacks) ? ($fallbacks[$source] ?? null) : null;
 
-        return is_string($path) && $path !== '' ? asset($path) : '';
+        return is_string($path) && $path !== '' ? self::localizePublicUrl(asset($path)) : '';
+    }
+
+    /**
+     * Convert same-host public URLs to root-relative paths so certificates
+     * still load assets when APP_URL does not match the request host.
+     */
+    public static function localizePublicUrl(string $url): string
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts)) {
+            return $url;
+        }
+
+        $host = isset($parts['host']) && is_string($parts['host']) ? $parts['host'] : null;
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        if ($host === null || $host === '' || $host !== $appHost) {
+            return $url;
+        }
+
+        $path = isset($parts['path']) && is_string($parts['path']) ? $parts['path'] : '';
+
+        if ($path === '') {
+            return $url;
+        }
+
+        $query = isset($parts['query']) && is_string($parts['query']) && $parts['query'] !== ''
+            ? '?' . $parts['query']
+            : '';
+
+        return $path . $query;
     }
 
     public static function defaultTemplate(): self

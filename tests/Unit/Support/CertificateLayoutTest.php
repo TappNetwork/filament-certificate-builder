@@ -163,6 +163,92 @@ it('normalizes legacy logo and signature image elements', function () {
         ->and($layout['signature_count'])->toBe(1);
 });
 
+it('defaults to a double gray border matching the legacy certificate', function () {
+    $border = CertificateLayout::default()['border'];
+
+    expect($border['style'])->toBe('double')
+        ->and($border['color'])->toBe('#a1a1aa')
+        ->and($border['width'])->toBe(8)
+        ->and($border['inner_color'])->toBe('#d4d4d8')
+        ->and($border['inner_width'])->toBe(4);
+});
+
+it('normalizes missing border config to the default double frame', function () {
+    $layout = CertificateLayout::normalize([
+        'elements' => [],
+    ]);
+
+    expect($layout['border'])->toBe(CertificateLayout::defaultBorder())
+        ->and(CertificateLayout::borderStyles($layout['border'])['canvas'])->toContain('#a1a1aa')
+        ->and(CertificateLayout::borderStyles($layout['border'])['inner'])->toContain('#d4d4d8');
+});
+
+it('builds gradient and solid border styles and rejects unsafe values', function () {
+    $gradient = CertificateLayout::normalizeBorder([
+        'style' => 'gradient',
+        'width' => 6,
+        'color' => '#a3e635',
+        'gradient' => 'linear-gradient(to right, #a3e635, #0ea5e9, #67e8f9)',
+    ]);
+    $solid = CertificateLayout::normalizeBorder([
+        'style' => 'solid',
+        'width' => 6,
+        'color' => '#B5498F',
+    ]);
+    $unsafe = CertificateLayout::normalizeBorder([
+        'style' => 'gradient',
+        'color' => 'red; background: url(evil)',
+        'gradient' => 'url(javascript:alert(1))',
+    ]);
+
+    expect($gradient['gradient'])->toBe('linear-gradient(to right, #a3e635, #0ea5e9, #67e8f9)')
+        ->and(CertificateLayout::borderStyles($gradient)['canvas'])->toContain('linear-gradient(to right, #a3e635, #0ea5e9, #67e8f9)')
+        ->and(CertificateLayout::borderStyles($gradient)['inner'])->toContain('inset:6px')
+        ->and(CertificateLayout::borderStyles($solid)['canvas'])->toBe('border:6px solid #B5498F;')
+        ->and($unsafe['color'])->toBe('#a1a1aa')
+        ->and($unsafe['gradient'])->toBe('');
+});
+
+it('defaults to a disabled banner header', function () {
+    $header = CertificateLayout::default()['header'];
+
+    expect($header['enabled'])->toBeFalse()
+        ->and($header['height'])->toBe(220)
+        ->and(CertificateLayout::headerStyles($header))->toBe('display:none;');
+});
+
+it('normalizes missing header config and rejects unsafe background values', function () {
+    $layout = CertificateLayout::normalize([
+        'elements' => [],
+    ]);
+    $header = CertificateLayout::normalizeHeader([
+        'enabled' => true,
+        'height' => 300,
+        'background_color' => '#B5498F',
+        'background_size' => '60% auto',
+        'background_position' => 'center center',
+        'title_bind' => 'course_name',
+        'title_color' => '#ffffff',
+        'subtitle' => 'CERTIFICATE OF COMPLETION',
+    ]);
+    $unsafe = CertificateLayout::normalizeHeader([
+        'enabled' => true,
+        'background_color' => 'red; background: url(evil)',
+        'background_size' => 'url(javascript:alert(1))',
+        'background_position' => 'center / cover',
+    ]);
+
+    expect($layout['header'])->toBe(CertificateLayout::defaultHeader())
+        ->and($header['enabled'])->toBeTrue()
+        ->and($header['title_bind'])->toBe('course_name')
+        ->and(CertificateLayout::headerStyles($header))->toContain('height:300px')
+        ->and(CertificateLayout::headerStyles($header))->toContain('#B5498F')
+        ->and(CertificateLayout::resolveHeaderTitle($header, ['course_name' => 'DECAN']))->toBe('DECAN')
+        ->and($unsafe['background_color'])->toBe('')
+        ->and($unsafe['background_size'])->toBe('cover')
+        ->and($unsafe['background_position'])->toBe('center');
+});
+
 it('syncs signature fields up to three while preserving edits and sources', function () {
     $elements = CertificateLayout::defaultElements();
     $elements = CertificateLayout::syncSignatureElements($elements, 3);
