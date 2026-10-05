@@ -8,9 +8,17 @@ use InvalidArgumentException;
 
 class CertificateLayout
 {
-    public const WIDTH = 1050;
+    /** Letter landscape width at 96dpi (11in). */
+    public const WIDTH = 1056;
 
-    public const HEIGHT = 774;
+    /** Letter landscape height at 96dpi (8.5in). */
+    public const HEIGHT = 816;
+
+    /** @deprecated Legacy design size before Letter landscape canvas. */
+    private const LEGACY_WIDTH = 1050;
+
+    /** @deprecated Legacy design size before Letter landscape canvas. */
+    private const LEGACY_HEIGHT = 774;
 
     private const MAX_LOGOS = 3;
 
@@ -146,9 +154,19 @@ class CertificateLayout
         $elements = self::ensureLogoSlots($elements);
         $elements = self::syncSignatureElements($elements, $signatureCount);
 
+        $width = (int) ($layout['width'] ?? self::WIDTH);
+        $height = (int) ($layout['height'] ?? self::HEIGHT);
+
+        // Migrate the pre-Letter design size so PDF/HTML canvas fills the page
+        // without shifting existing absolute element coordinates.
+        if ($width === self::LEGACY_WIDTH && $height === self::LEGACY_HEIGHT) {
+            $width = self::WIDTH;
+            $height = self::HEIGHT;
+        }
+
         return [
-            'width' => (int) ($layout['width'] ?? self::WIDTH),
-            'height' => (int) ($layout['height'] ?? self::HEIGHT),
+            'width' => $width,
+            'height' => $height,
             'signature_count' => $signatureCount,
             'elements' => $elements,
         ];

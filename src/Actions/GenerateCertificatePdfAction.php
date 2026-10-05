@@ -29,7 +29,8 @@ class GenerateCertificatePdfAction
             ->waitUntilNetworkIdle()
             ->showBackground()
             ->landscape()
-            ->format('A4');
+            ->format('Letter')
+            ->margins(0, 0, 0, 0);
 
         $chromePath = config('certificate-builder.chrome_path')
             ?? config('services.browsershot.chrome_path');

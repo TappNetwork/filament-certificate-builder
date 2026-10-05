@@ -31,9 +31,36 @@ it('configures browsershot with no sandbox for linux chrome launches', function 
 
     expect($command['options']['args'])->toContain('--no-sandbox')
         ->and($command['options']['landscape'])->toBeTrue()
-        ->and($command['options']['format'])->toBe('A4')
+        ->and($command['options']['format'])->toBe('Letter')
+        ->and($command['options']['margin'])->toMatchArray([
+            'top' => '0mm',
+            'right' => '0mm',
+            'bottom' => '0mm',
+            'left' => '0mm',
+        ])
         ->and($command['options']['printBackground'])->toBeTrue()
         ->and($command['options']['waitUntil'])->toBe('networkidle0');
+});
+
+it('renders a Letter-sized full-bleed certificate canvas for PDF html', function () {
+    $template = CertificateTemplate::defaultTemplate();
+
+    $html = view('filament-certificate-builder::certificate', [
+        'template' => $template,
+        'tokens' => [
+            'recipient_name' => 'Scott Grayson',
+            'course_name' => 'Certificate PDF Integration Course',
+            'date_range' => 'Oct 5, 2026',
+        ],
+    ])->render();
+
+    expect($html)
+        ->toContain('size: letter landscape')
+        ->toContain('width: 11in')
+        ->toContain('height: 8.5in')
+        ->toContain('margin: 0')
+        ->not->toContain('margin: 10px auto')
+        ->toContain('Scott Grayson');
 });
 
 it('applies the configured chrome path when set', function () {
