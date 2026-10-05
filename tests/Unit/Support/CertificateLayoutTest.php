@@ -4,6 +4,40 @@ declare(strict_types=1);
 
 use Tapp\FilamentCertificateBuilder\Support\CertificateLayout;
 
+it('uses Letter landscape design dimensions at 96dpi', function () {
+    expect(CertificateLayout::WIDTH)->toBe(1056)
+        ->and(CertificateLayout::HEIGHT)->toBe(816)
+        ->and(CertificateLayout::default()['width'])->toBe(1056)
+        ->and(CertificateLayout::default()['height'])->toBe(816);
+});
+
+it('migrates legacy canvas size to Letter landscape without moving elements', function () {
+    $layout = CertificateLayout::normalize([
+        'width' => 1050,
+        'height' => 774,
+        'elements' => [
+            [
+                'id' => 'recipient_name',
+                'type' => 'text',
+                'bind' => 'recipient_name',
+                'x' => 50,
+                'y' => 245,
+                'w' => 950,
+                'h' => 45,
+                'visible' => true,
+            ],
+        ],
+    ]);
+
+    $element = collect($layout['elements'])->firstWhere('id', 'recipient_name');
+
+    expect($layout['width'])->toBe(CertificateLayout::WIDTH)
+        ->and($layout['height'])->toBe(CertificateLayout::HEIGHT)
+        ->and($element['x'])->toBe(50)
+        ->and($element['y'])->toBe(245)
+        ->and($element['w'])->toBe(950);
+});
+
 it('treats catalog tokens as live binds for the requested set', function () {
     expect(CertificateLayout::isLiveBind('recipient_name', 'default'))->toBeTrue()
         ->and(CertificateLayout::isLiveBind('course_name', 'default'))->toBeTrue()

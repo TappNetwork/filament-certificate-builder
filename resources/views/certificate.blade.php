@@ -8,8 +8,6 @@
     $tokens ??= [];
     $tokenSet = $template->tokenSet();
     $layout = $template->resolvedLayout();
-    $width = (int) ($layout['width'] ?? CertificateLayout::WIDTH);
-    $height = (int) ($layout['height'] ?? CertificateLayout::HEIGHT);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -18,12 +16,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Laravel') }}</title>
     <style>
-        body { margin: 0; background: #fff; }
+        @page {
+            size: letter landscape;
+            margin: 0;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
         .certificate-canvas {
             position: relative;
-            width: {{ $width }}px;
-            height: {{ $height }}px;
-            margin: 10px auto;
+            /*
+             * Letter landscape (11in × 8.5in). Prefer inches so PDF/print drivers
+             * fill the page regardless of CSS px DPI assumptions. Constants
+             * CertificateLayout::WIDTH/HEIGHT match this at 96dpi (1056×816).
+             */
+            width: 11in;
+            height: 8.5in;
+            margin: 0;
             border: 8px solid #a1a1aa;
             box-sizing: border-box;
             font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
