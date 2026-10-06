@@ -118,24 +118,23 @@ class CertificateTemplate extends Model implements HasMedia
             return $url;
         }
 
-        $host = isset($parts['host']) && is_string($parts['host']) ? $parts['host'] : null;
+        $host = $parts['host'] ?? null;
         $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
 
-        if ($host === null || $host === '' || $host !== $appHost) {
+        if (! is_string($host) || $host === '' || $host !== $appHost) {
             return $url;
         }
 
-        $path = isset($parts['path']) && is_string($parts['path']) ? $parts['path'] : '';
+        $path = $parts['path'] ?? null;
 
-        if ($path === '') {
+        if (! is_string($path) || $path === '') {
             return $url;
         }
 
-        $query = isset($parts['query']) && is_string($parts['query']) && $parts['query'] !== ''
-            ? '?' . $parts['query']
-            : '';
+        $query = $parts['query'] ?? null;
+        $suffix = is_string($query) && $query !== '' ? '?' . $query : '';
 
-        return $path . $query;
+        return $path . $suffix;
     }
 
     public static function defaultTemplate(): self

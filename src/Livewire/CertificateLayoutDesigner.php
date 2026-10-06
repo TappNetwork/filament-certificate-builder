@@ -20,10 +20,10 @@ class CertificateLayoutDesigner extends Component
     public int $signatureCount = CertificateLayout::DEFAULT_SIGNATURE_COUNT;
 
     /** @var array{style: string, color: string, width: int, inner_color: string, inner_width: int, inner_inset: int, gradient: string} */
-    public array $border = [];
+    public array $border;
 
     /** @var array{enabled: bool, height: int, background_color: string, background_size: string, background_position: string, title_bind: string, title: string, title_color: string, title_size: int, title_transform: string, subtitle: string, subtitle_color: string, subtitle_size: int} */
-    public array $header = [];
+    public array $header;
 
     public ?string $selectedId = null;
 
