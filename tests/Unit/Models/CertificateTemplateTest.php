@@ -2,8 +2,34 @@
 
 declare(strict_types=1);
 
+use Mockery\MockInterface;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tapp\FilamentCertificateBuilder\Models\CertificateTemplate;
 use Tapp\FilamentCertificateBuilder\Support\CertificateLayout;
+
+/**
+ * @param  array<string, mixed>  $attributes
+ * @return Media&MockInterface
+ */
+function mockCertificateMedia(array $attributes = []): Media
+{
+    /** @var Media&MockInterface $media */
+    $media = Mockery::mock(Media::class)->makePartial();
+    $media->setRawAttributes(array_merge([
+        'id' => 1,
+        'collection_name' => 'logo_1',
+        'name' => 'logo',
+        'file_name' => 'logo.png',
+        'disk' => 'public',
+        'size' => 100,
+        'manipulations' => [],
+        'custom_properties' => [],
+        'generated_conversions' => [],
+        'responsive_images' => [],
+    ], $attributes));
+
+    return $media;
+}
 
 it('returns the default layout when layout is empty', function () {
     $template = new CertificateTemplate(['name' => 'Blank']);
@@ -25,6 +51,174 @@ it('falls back to configured certificate images when media is missing', function
         ->and($template->assetUrl('signature_2'))->toContain('coordinator-signature.png')
         ->and($template->assetUrl('logo_2'))->toBe('')
         ->and($template->assetUrl('signature_3'))->toBe('');
+});
+
+it('returns an empty string when media and fallback assets are missing', function () {
+    config()->set('certificate-builder.fallback_assets', []);
+
+    $template = CertificateTemplate::defaultTemplate();
+
+    expect($template->assetUrl('logo_1'))->toBe('')
+        ->and($template->assetUrl('signature_1'))->toBe('');
+});
+
+it('uses a temporary url when the disk supports signed urls', function () {
+    config()->set([
+        'certificate-builder.media.use_signed_urls' => true,
+        'certificate-builder.media.signed_url_expiration' => 60,
+        'filesystems.disks.s3' => [
+            'driver' => 's3',
+            'key' => 'test-key',
+            'secret' => 'test-secret',
+            'region' => 'us-east-1',
+            'bucket' => 'test-bucket',
+        ],
+    ]);
+
+    $signedUrl = 'https://test-bucket.s3.amazonaws.com/1304/logo.png?X-Amz-Signature=abc123';
+
+    $media = mockCertificateMedia(['disk' => 's3']);
+    $media->shouldReceive('getTemporaryUrl')
+        ->once()
+        ->andReturn($signedUrl);
+    $media->shouldReceive('getUrl')->never();
+
+    /** @var CertificateTemplate&MockInterface $template */
+    $template = Mockery::mock(CertificateTemplate::class)->makePartial();
+    $template->shouldReceive('getFirstMedia')
+        ->with('logo_1')
+        ->once()
+        ->andReturn($media);
+
+    expect($template->assetUrl('logo_1'))->toBe($signedUrl);
+});
+
+it('falls back to getUrl when signed urls are disabled', function () {
+    config()->set([
+        'certificate-builder.media.use_signed_urls' => false,
+        'filesystems.disks.s3' => [
+            'driver' => 's3',
+            'key' => 'test-key',
+            'secret' => 'test-secret',
+            'region' => 'us-east-1',
+            'bucket' => 'test-bucket',
+        ],
+    ]);
+
+    $publicUrl = 'https://test-bucket.s3.amazonaws.com/1304/logo.png';
+
+    $media = mockCertificateMedia(['disk' => 's3']);
+    $media->shouldReceive('getTemporaryUrl')->never();
+    $media->shouldReceive('getUrl')
+        ->once()
+        ->andReturn($publicUrl);
+
+    /** @var CertificateTemplate&MockInterface $template */
+    $template = Mockery::mock(CertificateTemplate::class)->makePartial();
+    $template->shouldReceive('getFirstMedia')
+        ->with('logo_1')
+        ->once()
+        ->andReturn($media);
+
+    expect($template->assetUrl('logo_1'))->toBe($publicUrl);
+});
+
+it('falls back to getUrl when temporary url generation fails', function () {
+    config()->set([
+        'certificate-builder.media.use_signed_urls' => true,
+        'filesystems.disks.s3' => [
+            'driver' => 's3',
+            'key' => 'test-key',
+            'secret' => 'test-secret',
+            'region' => 'us-east-1',
+            'bucket' => 'test-bucket',
+        ],
+    ]);
+
+    $publicUrl = 'https://test-bucket.s3.amazonaws.com/1304/logo.png';
+
+    $media = mockCertificateMedia(['disk' => 's3']);
+    $media->shouldReceive('getTemporaryUrl')
+        ->once()
+        ->andThrow(new RuntimeException('Unable to create temporary URL'));
+    $media->shouldReceive('getUrl')
+        ->once()
+        ->andReturn($publicUrl);
+
+    /** @var CertificateTemplate&MockInterface $template */
+    $template = Mockery::mock(CertificateTemplate::class)->makePartial();
+    $template->shouldReceive('getFirstMedia')
+        ->with('logo_1')
+        ->once()
+        ->andReturn($media);
+
+    expect($template->assetUrl('logo_1'))->toBe($publicUrl);
+});
+
+it('uses getUrl for local disks that do not support temporary urls', function () {
+    config()->set([
+        'certificate-builder.media.use_signed_urls' => true,
+        'app.url' => 'http://localhost',
+        'filesystems.disks.public' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public'),
+            'url' => '/storage',
+        ],
+    ]);
+
+    $localUrl = 'http://localhost/storage/1/logo.png';
+
+    $media = mockCertificateMedia(['disk' => 'public']);
+    $media->shouldReceive('getTemporaryUrl')->never();
+    $media->shouldReceive('getUrl')
+        ->once()
+        ->andReturn($localUrl);
+
+    /** @var CertificateTemplate&MockInterface $template */
+    $template = Mockery::mock(CertificateTemplate::class)->makePartial();
+    $template->shouldReceive('getFirstMedia')
+        ->with('logo_1')
+        ->once()
+        ->andReturn($media);
+
+    expect($template->assetUrl('logo_1'))->toBe('/storage/1/logo.png');
+});
+
+it('resolves legacy media collections through signed urls', function () {
+    config()->set([
+        'certificate-builder.media.use_signed_urls' => true,
+        'certificate-builder.fallback_assets' => [],
+        'filesystems.disks.s3' => [
+            'driver' => 's3',
+            'key' => 'test-key',
+            'secret' => 'test-secret',
+            'region' => 'us-east-1',
+            'bucket' => 'test-bucket',
+        ],
+    ]);
+
+    $signedUrl = 'https://test-bucket.s3.amazonaws.com/legacy/logo.png?X-Amz-Signature=legacy';
+
+    $media = mockCertificateMedia([
+        'disk' => 's3',
+        'collection_name' => 'image_1',
+    ]);
+    $media->shouldReceive('getTemporaryUrl')
+        ->once()
+        ->andReturn($signedUrl);
+
+    /** @var CertificateTemplate&MockInterface $template */
+    $template = Mockery::mock(CertificateTemplate::class)->makePartial();
+    $template->shouldReceive('getFirstMedia')
+        ->with('logo_1')
+        ->once()
+        ->andReturn(null);
+    $template->shouldReceive('getFirstMedia')
+        ->with('image_1')
+        ->once()
+        ->andReturn($media);
+
+    expect($template->assetUrl('logo_1'))->toBe($signedUrl);
 });
 
 it('localizes same-host public asset URLs and leaves remote URLs absolute', function () {

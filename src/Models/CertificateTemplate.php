@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tapp\FilamentCertificateBuilder\Database\Factories\CertificateTemplateFactory;
 use Tapp\FilamentCertificateBuilder\Support\CertificateLayout;
 
@@ -80,7 +81,7 @@ class CertificateTemplate extends Model implements HasMedia
         $media = $this->getFirstMedia($source);
 
         if ($media !== null) {
-            return self::localizePublicUrl($media->getUrl());
+            return $this->resolveMediaUrl($media);
         }
 
         $legacySources = match ($source) {
@@ -96,7 +97,7 @@ class CertificateTemplate extends Model implements HasMedia
             $legacyMedia = $this->getFirstMedia($legacySource);
 
             if ($legacyMedia !== null) {
-                return self::localizePublicUrl($legacyMedia->getUrl());
+                return $this->resolveMediaUrl($legacyMedia);
             }
         }
 
@@ -104,6 +105,51 @@ class CertificateTemplate extends Model implements HasMedia
         $path = is_array($fallbacks) ? ($fallbacks[$source] ?? null) : null;
 
         return is_string($path) && $path !== '' ? self::localizePublicUrl(asset($path)) : '';
+    }
+
+    /**
+     * Resolve a public or temporary URL for Spatie media.
+     *
+     * Prefers signed temporary URLs on cloud disks when enabled so private
+     * S3/R2 objects load in HTML views and HeadlessChrome PDF rendering.
+     */
+    protected function resolveMediaUrl(Media $media): string
+    {
+        if (config('certificate-builder.media.use_signed_urls', true) && $this->diskSupportsTemporaryUrls((string) $media->disk)) {
+            $expiration = (int) config('certificate-builder.media.signed_url_expiration', 60);
+
+            try {
+                return self::localizePublicUrl($media->getTemporaryUrl(now()->addMinutes($expiration)));
+            } catch (\Exception) {
+                // Credentials missing or disk misconfigured — fall back to getUrl().
+            }
+        }
+
+        try {
+            return self::localizePublicUrl($media->getUrl());
+        } catch (\Exception) {
+            return '';
+        }
+    }
+
+    /**
+     * Cloud storage drivers that support temporary/signed URLs.
+     *
+     * @param  string  $diskName  The name of the disk to check
+     */
+    protected function diskSupportsTemporaryUrls(string $diskName): bool
+    {
+        $diskConfig = config("filesystems.disks.{$diskName}");
+
+        if (! is_array($diskConfig)) {
+            return false;
+        }
+
+        $driver = $diskConfig['driver'] ?? 'local';
+
+        $cloudDrivers = ['s3', 's3-custom', 'gcs', 'azure', 'rackspace', 'dropbox'];
+
+        return in_array($driver, $cloudDrivers, true);
     }
 
     /**
