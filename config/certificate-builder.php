@@ -42,6 +42,21 @@ return [
 
     'fallback_assets' => [],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Media URLs
+    |--------------------------------------------------------------------------
+    |
+    | When use_signed_urls is true, assetUrl() prefers temporary/signed URLs on
+    | cloud disks (S3, R2, etc.) so private media loads in HTML and PDF renders.
+    | Local/public disks still use getUrl(). Expiration is in minutes.
+    |
+    */
+    'media' => [
+        'use_signed_urls' => true,
+        'signed_url_expiration' => 60,
+    ],
+
     'chrome_path' => null,
 
     'navigation_group' => 'Certificates',

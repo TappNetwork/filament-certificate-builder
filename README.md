@@ -91,6 +91,11 @@ return [
         'signature_2' => 'images/signer-two.png',
     ],
 
+    'media' => [
+        'use_signed_urls' => true,
+        'signed_url_expiration' => 60,
+    ],
+
     'chrome_path' => env('BROWSERSHOT_CHROME_PATH'),
 
     'navigation_group' => 'Certificates',
@@ -111,6 +116,8 @@ return [
 | `token_sets` | Named issuing contexts (course, training, etc.). Each has a label, resolver, live tokens, and default static copy. |
 | `default_signers` | Name and title shown on new/reset layouts for signature slots 1–3. |
 | `fallback_assets` | Public asset paths used when a template has no uploaded media for that slot. Keys match media collections (`logo_1`, `signature_1`, …). |
+| `media.use_signed_urls` | When `true` (default), `assetUrl()` uses temporary/signed URLs on cloud disks (S3, R2, etc.) so private media loads in HTML and PDF. Local disks still use `getUrl()`. |
+| `media.signed_url_expiration` | Temporary URL lifetime in minutes (default `60`). |
 | `chrome_path` | Chrome/Chromium binary for Browsershot PDF generation. Falls back to `services.browsershot.chrome_path`. |
 | `navigation_group` / `navigation_sort` | Filament nav placement for the package resource. |
 | `preview_template_route` | Named route for “Preview with sample data” on the edit page. The route receives the template model. Set to `null` to hide the button. |
