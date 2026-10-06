@@ -54,6 +54,41 @@ it('can change the number of signature fields up to three', function () {
         ->and($signatures)->toHaveCount(3);
 });
 
+it('can save canvas border configuration', function () {
+    Livewire::test(CertificateLayoutDesigner::class, ['template' => $this->template])
+        ->set('border.style', 'gradient')
+        ->set('border.width', 6)
+        ->set('border.color', '#a3e635')
+        ->set('border.gradient', 'linear-gradient(to right, #a3e635, #0ea5e9, #67e8f9)')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $border = $this->template->fresh()->resolvedLayout()['border'];
+
+    expect($border['style'])->toBe('gradient')
+        ->and($border['width'])->toBe(6)
+        ->and($border['gradient'])->toBe('linear-gradient(to right, #a3e635, #0ea5e9, #67e8f9)');
+});
+
+it('can save banner header configuration', function () {
+    Livewire::test(CertificateLayoutDesigner::class, ['template' => $this->template])
+        ->set('header.enabled', true)
+        ->set('header.height', 220)
+        ->set('header.title_bind', 'course_name')
+        ->set('header.subtitle', 'CERTIFICATE OF COMPLETION')
+        ->set('header.title_transform', 'uppercase')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $header = $this->template->fresh()->resolvedLayout()['header'];
+
+    expect($header['enabled'])->toBeTrue()
+        ->and($header['height'])->toBe(220)
+        ->and($header['title_bind'])->toBe('course_name')
+        ->and($header['subtitle'])->toBe('CERTIFICATE OF COMPLETION')
+        ->and($header['title_transform'])->toBe('uppercase');
+});
+
 it('can bind a static text element to a catalog token', function () {
     Livewire::test(CertificateLayoutDesigner::class, ['template' => $this->template])
         ->call('selectElement', 'certifying_line')

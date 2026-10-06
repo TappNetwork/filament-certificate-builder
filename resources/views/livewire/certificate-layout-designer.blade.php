@@ -39,13 +39,32 @@
             })"
         >
             <div
-                class="relative mx-auto origin-top-left border-8 border-zinc-400 bg-white font-serif shadow-lg"
-                :style="`width:${width}px;height:${height}px;transform:scale(${scale});`"
+                class="relative mx-auto origin-top-left bg-white font-serif shadow-lg"
+                style="box-sizing:border-box;{{ $borderStyles['canvas'] }}"
+                :style="`width:${width}px;height:${height}px;box-sizing:border-box;transform:scale(${scale});{{ $borderStyles['canvas'] }}`"
             >
                 <div
-                    class="absolute inset-[10px] border-4 border-zinc-300"
+                    class="absolute"
+                    style="{{ $borderStyles['inner'] }}"
                     @mousedown.self="$wire.selectElement(null)"
                 >
+                    @if (($header['enabled'] ?? false))
+                        <div
+                            class="pointer-events-none absolute top-0 left-0 z-0"
+                            style="{{ $headerStyles }}@if ($headerImageUrl !== '') background-image:url('{{ $headerImageUrl }}');@endif"
+                        >
+                            @if ($headerTitle !== '')
+                                <div style="width:100%;font-weight:800;line-height:1.15;color:{{ $header['title_color'] ?? '#ffffff' }};font-size:{{ (int) ($header['title_size'] ?? 36) }}px;text-transform:{{ ($header['title_transform'] ?? 'none') === 'uppercase' ? 'uppercase' : 'none' }};">
+                                    {{ $headerTitle }}
+                                </div>
+                            @endif
+                            @if (($header['subtitle'] ?? '') !== '')
+                                <div style="width:100%;margin-top:12px;font-weight:800;line-height:1.15;color:{{ $header['subtitle_color'] ?? '#111827' }};font-size:{{ (int) ($header['subtitle_size'] ?? 28) }}px;">
+                                    {{ $header['subtitle'] }}
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                     @foreach ($elements as $element)
                         @php
                             $isSelected = $selectedId === ($element['id'] ?? null);
@@ -58,7 +77,7 @@
 
                         <div
                             wire:key="element-{{ $element['id'] }}"
-                            class="absolute cursor-move select-none {{ $isSelected ? 'ring-2 ring-primary-500 ring-offset-1' : 'hover:ring-1 hover:ring-primary-300' }} {{ $visible ? '' : 'opacity-40' }}"
+                            class="absolute z-10 cursor-move select-none {{ $isSelected ? 'ring-2 ring-primary-500 ring-offset-1' : 'hover:ring-1 hover:ring-primary-300' }} {{ $visible ? '' : 'opacity-40' }}"
                             style="left: {{ (int) $element['x'] }}px; top: {{ (int) $element['y'] }}px; width: {{ (int) $element['w'] }}px; height: {{ (int) $element['h'] }}px;"
                             data-id="{{ $element['id'] }}"
                             @mousedown.prevent="startDrag($event, '{{ $element['id'] }}'); $wire.selectElement('{{ $element['id'] }}')"
@@ -118,6 +137,129 @@
         </div>
 
         <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-900">
+            <h4 class="mb-3 text-sm font-semibold text-gray-950 dark:text-white">Canvas border</h4>
+            <div class="mb-6 space-y-3 text-sm">
+                <label class="block space-y-1">
+                    <span class="text-xs text-gray-500">Style</span>
+                    <select class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="border.style">
+                        @foreach (['none' => 'None', 'solid' => 'Solid', 'double' => 'Double', 'gradient' => 'Gradient'] as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                @if (($border['style'] ?? 'double') !== 'none')
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Width</span>
+                            <input type="number" min="0" max="40" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="border.width" />
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Color</span>
+                            <input type="color" class="h-9 w-full rounded border-gray-300 dark:border-white/10 dark:bg-gray-800" wire:model.live="border.color" />
+                        </label>
+                    </div>
+                @endif
+                @if (($border['style'] ?? null) === 'double')
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Inner width</span>
+                            <input type="number" min="0" max="20" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="border.inner_width" />
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Inner color</span>
+                            <input type="color" class="h-9 w-full rounded border-gray-300 dark:border-white/10 dark:bg-gray-800" wire:model.live="border.inner_color" />
+                        </label>
+                    </div>
+                @endif
+                @if (($border['style'] ?? null) === 'gradient')
+                    <label class="block space-y-1">
+                        <span class="text-xs text-gray-500">Gradient</span>
+                        <input
+                            type="text"
+                            class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800"
+                            placeholder="linear-gradient(to right, #a3e635, #0ea5e9, #67e8f9)"
+                            wire:model.live.debounce.200ms="border.gradient"
+                        />
+                    </label>
+                @endif
+            </div>
+
+            <h4 class="mb-3 text-sm font-semibold text-gray-950 dark:text-white">Banner header</h4>
+            <div class="mb-6 space-y-3 text-sm">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" wire:model.live="header.enabled" />
+                    Show banner
+                </label>
+                @if ($header['enabled'] ?? false)
+                    <label class="block space-y-1">
+                        <span class="text-xs text-gray-500">Height</span>
+                        <input type="number" min="40" max="400" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="header.height" />
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Background color</span>
+                            <input type="text" placeholder="#B5498F" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live.debounce.200ms="header.background_color" />
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Image size</span>
+                            <select class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="header.background_size">
+                                <option value="cover">Cover</option>
+                                <option value="contain">Contain</option>
+                                <option value="60% auto">60% auto</option>
+                                <option value="auto">Auto</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label class="block space-y-1">
+                        <span class="text-xs text-gray-500">Title source</span>
+                        <select class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="header.title_bind">
+                            <option value="">Static text</option>
+                            @foreach ($tokenOptions as $tokenKey => $tokenLabel)
+                                <option value="{{ $tokenKey }}">{{ $tokenLabel }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    @if (($header['title_bind'] ?? '') === '')
+                        <label class="block space-y-1">
+                            <span class="text-xs text-gray-500">Title</span>
+                            <input type="text" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live.debounce.200ms="header.title" />
+                        </label>
+                    @endif
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Title color</span>
+                            <input type="color" class="h-9 w-full rounded border-gray-300 dark:border-white/10 dark:bg-gray-800" wire:model.live="header.title_color" />
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Title size</span>
+                            <input type="number" min="12" max="72" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="header.title_size" />
+                        </label>
+                    </div>
+                    <label class="block space-y-1">
+                        <span class="text-xs text-gray-500">Title transform</span>
+                        <select class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="header.title_transform">
+                            <option value="none">None</option>
+                            <option value="uppercase">Uppercase</option>
+                        </select>
+                    </label>
+                    <label class="block space-y-1">
+                        <span class="text-xs text-gray-500">Subtitle</span>
+                        <input type="text" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live.debounce.200ms="header.subtitle" />
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Subtitle color</span>
+                            <input type="color" class="h-9 w-full rounded border-gray-300 dark:border-white/10 dark:bg-gray-800" wire:model.live="header.subtitle_color" />
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs text-gray-500">Subtitle size</span>
+                            <input type="number" min="12" max="72" class="w-full rounded border-gray-300 text-sm dark:border-white/10 dark:bg-gray-800" wire:model.live="header.subtitle_size" />
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500">Upload the banner image on the template form.</p>
+                @endif
+            </div>
+
             <h4 class="mb-3 text-sm font-semibold text-gray-950 dark:text-white">Element properties</h4>
 
             @if ($selectedId)

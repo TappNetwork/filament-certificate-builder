@@ -93,6 +93,17 @@ class CertificateTemplateResource extends Resource
                             ->maxSize(5120),
                     ])
                     ->columns(3),
+                Section::make('Header banner')
+                    ->description('Optional banner image for award-style certificates. Enable and style it in the layout designer.')
+                    ->schema([
+                        SpatieMediaLibraryFileUpload::make('header')
+                            ->label('Header image')
+                            ->collection('header')
+                            ->image()
+                            ->imageEditor()
+                            ->maxSize(5120)
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('Signatures')
                     ->description('Upload signature images. Each is shown with its signature line, name, and title in the designer.')
                     ->schema([

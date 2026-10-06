@@ -218,6 +218,21 @@ $html = view('filament-certificate-builder::certificate', [
 $pdf = app(GenerateCertificatePdfAction::class)->handle($template, $tokens);
 ```
 
+### Filament LMS course certificates
+
+[tapp/filament-lms](https://github.com/TappNetwork/filament-lms) can optionally assign a template per course. LMS does **not** add a package-default `course` token set — hosts register that set themselves. LMS creates templates from **Edit Course** (name + token set + default layout) and keeps `filament-lms::certificates.show` / `filament-lms::certificates.download` for issue and download. The builder create page does not need a `?course=` hook.
+
+When rendering a course certificate, LMS calls your resolver with:
+
+```php
+$resolver->resolve([
+    'course' => $course, // Tapp\FilamentLms\Models\Course
+    'user' => $user,
+]);
+```
+
+Add a matching `course` token set in the host `config/certificate-builder.php`. Hosts that already have `certificate_templates` skip the package create-table migration (see Installation).
+
 `CertificateLayout::sampleTokens($tokenSet)` returns the configured sample values. Use that for designer previews when you do not have a live course/user.
 
 The built-in `ResolveSampleCertificateTokensAction` does exactly that. Point a token set at it if you only need designer samples and have not written a live resolver yet.
